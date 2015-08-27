@@ -5,7 +5,6 @@ package client
 	import flash.filesystem.FileMode;
 	import flash.filesystem.FileStream;
 	
-
 	import starling.display.Button;
 	import starling.display.Sprite;
 	import starling.events.Event;
@@ -68,15 +67,17 @@ package client
 		}
 		
 		private function initialize() : void
-		{			
+		{				
 			var texture:Texture = Texture.fromBitmap(new ButtonBkgTexture());			
-			_btn = new Button(texture, "选择资源目录");	
+			_btn = new Button(texture, "选择资源目录");			
 			
 			_btn.width = 322;
-			_btn.height = 116;
+			_btn.height = 116;	
+			
 			
 			_btn.x = (stage.stageWidth - _btn.width) >> 1;
 			_btn.y = (stage.stageHeight - _btn.height) >> 1;
+			
 			
 			addChild(_btn);
 			
@@ -147,8 +148,7 @@ package client
 					var o:Object = {};
 					scanDir2Object(f, o);
 						
-					_text = JSON.stringify(o);
-					//trace(_text);
+					_text = JSON.stringify(o);					
 					
 					f.browseForSave("请选择JSON文件保存到：");
 				}
