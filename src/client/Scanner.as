@@ -1,9 +1,13 @@
 package client
 {
+	import flash.display.Loader;
+	import flash.display.LoaderInfo;
 	import flash.events.Event;
 	import flash.filesystem.File;
 	import flash.filesystem.FileMode;
 	import flash.filesystem.FileStream;
+	import flash.net.URLRequest;
+	import flash.utils.Dictionary;
 	
 	import starling.display.Button;
 	import starling.display.Sprite;
@@ -58,6 +62,11 @@ package client
 		
 		private var _text:String = null;
 		
+		private var _swfObjs:Dictionary = new Dictionary();
+		
+		private var _rootObj:Object = null;		
+		
+		
 		public function Scanner()
 		{
 			stage ? initialize():addEventListener(starling.events.Event.ADDED_TO_STAGE, function (event:starling.events.Event) : void {
@@ -84,6 +93,26 @@ package client
 			_btn.addEventListener(TouchEvent.TOUCH, onTouch);
 		}
 		
+		private function getSwfClassNames(filePath:String, o:Object) : void
+		{
+			var loader:Loader = new Loader();
+			loader.contentLoaderInfo.addEventListener(flash.events.Event.COMPLETE, onLoadSwfComplete);
+			loader.name = filePath;			
+			loader.load(new URLRequest(filePath));	
+			
+			_swfObjs[filePath] = o;
+		}
+		
+		protected function onLoadSwfComplete(event:flash.events.Event) : void
+		{				
+			var loaderInfo:LoaderInfo = event.target as LoaderInfo;	
+			var clsArr:Array = SwfUtil.getSWFClassName(loaderInfo.bytes);			
+			_swfObjs[loaderInfo.loader.name]["classes"] =  clsArr;
+			
+			trace("write swf classes");
+					
+		}
+		
 		private function scanDir2Object(f:File, o:Object) : void
 		{
 			if (!f || !o)
@@ -97,29 +126,29 @@ package client
 			{
 				if (item.isDirectory)
 				{
-					var scene:Object = {};
-					scene["server"] = "http://s1.download.camu.com";
-					scene["preload"] = 0;
+					var root:Object = {};
+					o[item.name] = root;
 					
-					o[item.name] = scene;
-					
-					scanDir2Object(item, scene);
+					root["server"] = "http://app.camu.com/game/douniu/resource/" + item.name + "/";					
+					scanDir2Object(item, root);
 				}
 				else
-				{
-					if (!o.hasOwnProperty("reslist"))
-					{
-						o["reslist"] = new Array();
-					}
-					
+				{						
 					var swf:Object = {};
-					
-					swf["id"] = item.name;
+										
+					swf["id"] = item.name.slice(0, item.name.lastIndexOf("."));
 					swf["weight"] = item.size;
 					swf["type"] = guessType(item.extension);
-					swf["path"] = "/" + item.name;
+					swf["path"] = item.name;
+										
+					getSwfClassNames(item.nativePath, swf);		
 					
-					o["reslist"].push(swf);					
+					if (!o.hasOwnProperty("res_list"))
+					{
+						o["res_list"] = new Array();
+					}
+					
+					(o["res_list"] as Array).push(swf);
 				}
 			}
 		}
@@ -143,20 +172,21 @@ package client
 			var f:File = event.target as File;
 			if (f)
 			{
-				if (_text == null)
-				{
-					var o:Object = {};
-					scanDir2Object(f, o);
-						
-					_text = JSON.stringify(o);					
+				if (_rootObj == null)
+				{	
+					_rootObj = {};
+					scanDir2Object(f, _rootObj);				
+					
 					
 					f.browseForSave("请选择JSON文件保存到：");
 				}
 				else
 				{
+					trace("write json file.");
+					
 					var fs:FileStream = new FileStream();
 					fs.open(f, FileMode.WRITE);
-					fs.writeUTFBytes(_text);					
+					fs.writeUTFBytes(JSON.stringify(_rootObj));			
 					fs.close();
 					
 					_text = null;
